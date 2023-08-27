@@ -1,4 +1,5 @@
 const User = require("../models/userModel");
+const bcrypt = require("bcrypt");
 
 const signup = async (req, res) => {
   try {
@@ -16,15 +17,24 @@ const signup = async (req, res) => {
         .status(403)
         .json({ status: false, data: null, message: "Account already exists" });
     }
-    const user = await User.create({ fullName, email, mobile, password });
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+    const user = await User.create({
+      fullName,
+      email,
+      mobile,
+      password: hashedPassword,
+    });
     if (!user) {
       throw new Error(
         "Some thing went wrong while signing up, please try again"
       );
     }
-    return res
-      .status(201)
-      .json({ status: true, data: user, message: "Signedup successfully" });
+    return res.status(201).json({
+      status: true,
+      data: user,
+      message: "Signedup successfully, please signin to continue...",
+    });
   } catch (error) {
     return res
       .status(500)
@@ -47,6 +57,12 @@ const signin = async (req, res) => {
       return res
         .status(404)
         .json({ status: false, data: null, message: "User not found" });
+    }
+    const comparePassword = await bcrypt.compare(password, user.password);
+    if (user && !comparePassword) {
+      return res
+        .status(403)
+        .json({ status: false, data: null, message: "Invalid credentials" });
     }
     return res
       .status(201)
