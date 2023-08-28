@@ -1,7 +1,32 @@
 const Expense = require("../models/expenseMode");
 
+const getAllExpenses = async (req, res) => {
+  try {
+    const user = req.user;
+    const expenses = await user.getExpenses();
+    if (!expenses) {
+      return res.status(500).json({
+        status: false,
+        data: null,
+        message:
+          "Something went wring while fetching expenses, pleas try again",
+      });
+    }
+    return res
+      .status(200)
+      .json({ status: true, data: expenses, message: "List of all expenses" });
+  } catch (error) {
+    return res.status(500).json({
+      status: false,
+      data: null,
+      message: error.message,
+    });
+  }
+};
+
 const addExpense = async (req, res) => {
   try {
+    const user = req.user;
     const { amount, category, description } = req.body;
     if (!amount || !category || !description) {
       return res.status(400).json({
@@ -10,7 +35,7 @@ const addExpense = async (req, res) => {
         message: "Missing required fields",
       });
     }
-    const expense = await Expense.create({ amount, category, description });
+    const expense = await user.createExpense({ amount, category, description });
     if (!expense) {
       return res.status(500).json({
         status: false,
@@ -32,29 +57,6 @@ const addExpense = async (req, res) => {
   }
 };
 
-const getAllExpenses = async (req, res) => {
-  try {
-    const expenses = await Expense.findAll();
-    if (!expenses) {
-      return res.status(500).json({
-        status: false,
-        data: null,
-        message:
-          "Something went wring while fetching expenses, pleas try again",
-      });
-    }
-    return res
-      .status(200)
-      .json({ status: true, data: expenses, message: "List of all expenses" });
-  } catch (error) {
-    return res.status(500).json({
-      status: false,
-      data: null,
-      message: error.message,
-    });
-  }
-};
-
 const editExpense = async (req, res) => {
   try {
     const id = req.params.expenseId;
@@ -65,6 +67,7 @@ const editExpense = async (req, res) => {
         message: "Missing expense id",
       });
     }
+    const user = req.user;
     const { amount, category, description } = req.body;
     if (!amount || !category || !description) {
       return res.status(400).json({
@@ -73,7 +76,7 @@ const editExpense = async (req, res) => {
         message: "Missing required fields",
       });
     }
-    const expense = await Expense.findOne({ where: { id } });
+    const expense = await Expense.findOne({ where: { id, userId: user.id } });
     if (!expense) {
       return res.status(400).json({
         status: false,
@@ -117,7 +120,8 @@ const deleteExpense = async (req, res) => {
         message: "Missing expense id",
       });
     }
-    const expense = await Expense.findOne({ where: { id } });
+    const user = req.user;
+    const expense = await Expense.findOne({ where: { id, userId: user.id } });
     if (!expense) {
       return res.status(400).json({
         status: false,
@@ -148,4 +152,4 @@ const deleteExpense = async (req, res) => {
   }
 };
 
-module.exports = { addExpense, getAllExpenses, editExpense, deleteExpense };
+module.exports = { getAllExpenses, addExpense, editExpense, deleteExpense };
