@@ -31,6 +31,7 @@ const signup = async (req, res) => {
       email,
       mobile,
       password: hashedPassword,
+      premiumUser: false,
     });
     if (!user) {
       throw new Error(
@@ -84,4 +85,16 @@ const signin = async (req, res) => {
   }
 };
 
-module.exports = { signup, signin };
+const profile = async (req, res) => {
+  try {
+    return res
+      .status(200)
+      .json({ status: true, data: req.user, message: "User profile" });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ status: false, data: null, message: error.message });
+  }
+};
+
+module.exports = { signup, signin, profile };
