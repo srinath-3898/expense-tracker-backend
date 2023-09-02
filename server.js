@@ -14,6 +14,7 @@ app.use(express.urlencoded({ extended: false }));
 app.use("/user", require("./routes/userRoutes"));
 app.use("/expense", require("./routes/expenseRoutes"));
 app.use("/payment", require("./routes/paymentRoutes"));
+app.use("/premium", require("./routes/premiumRoutes"));
 
 User.hasMany(Expense);
 Expense.belongsTo(User);

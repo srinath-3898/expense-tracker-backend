@@ -24,7 +24,6 @@ const createOrder = async (req, res) => {
             .json({ status: false, data: null, message: error.message });
         }
         const { id, amount, currency } = response;
-        const user = req.user;
         const payment = await req.user.createPayment({
           orderId: orderId,
           rpOrderId: id,
@@ -40,7 +39,8 @@ const createOrder = async (req, res) => {
         return res.status(201).json({
           status: true,
           data: payment,
-          message: "Payment created successfully",
+          message:
+            "Your order has been created successfully, redirecting to payments screen...",
         });
       }
     );

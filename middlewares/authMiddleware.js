@@ -13,10 +13,14 @@ const protect = async (req, res, next) => {
       if (!user) {
         return res
           .status(401)
-          .json({ status: false, data: null, message: "Not Authorized" });
+          .json({ status: false, data: null, message: "Not authorized" });
       }
       req.user = user;
       next();
+    } else {
+      return res
+        .status(401)
+        .json({ status: false, data: null, message: "Not authorized" });
     }
   } catch (error) {
     return res
