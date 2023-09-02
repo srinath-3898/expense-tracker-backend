@@ -1,8 +1,9 @@
 const Payment = require("../models/paymentModel");
 const Razorpay = require("razorpay");
-const User = require("../models/userModel");
+const sequelize = require("../configs/databaseConfig");
 
 const createOrder = async (req, res) => {
+  const transaction = await sequelize.transaction();
   try {
     const { orderId } = req.body;
     const orderExists = await Payment.findOne({ where: { orderId } });
@@ -24,18 +25,23 @@ const createOrder = async (req, res) => {
             .json({ status: false, data: null, message: error.message });
         }
         const { id, amount, currency } = response;
-        const payment = await req.user.createPayment({
-          orderId: orderId,
-          rpOrderId: id,
-          amount: amount,
-          currency: currency,
-          status: "PENDING",
-        });
+        const payment = await req.user.createPayment(
+          {
+            orderId: orderId,
+            rpOrderId: id,
+            amount: amount / 100,
+            currency: currency,
+            status: "PENDING",
+          },
+          { transaction }
+        );
         if (!payment) {
+          await transaction.rollback();
           throw new Error(
             "Something went wrong while creating payment, please try again"
           );
         }
+        await transaction.commit();
         return res.status(201).json({
           status: true,
           data: payment,
@@ -45,6 +51,7 @@ const createOrder = async (req, res) => {
       }
     );
   } catch (error) {
+    await transaction.rollback();
     return res
       .status(500)
       .json({ status: false, data: null, message: error.message });
@@ -52,6 +59,7 @@ const createOrder = async (req, res) => {
 };
 
 const updateStatus = async (req, res) => {
+  const transaction = await sequelize.transaction();
   try {
     const { rpOrderId, status } = req.body;
     if (!rpOrderId || !status) {
@@ -67,15 +75,21 @@ const updateStatus = async (req, res) => {
         .status(400)
         .json({ status: false, data: null, message: "Order not found" });
     }
-    const updates = await Promise.all([
-      payment.update({ status }),
-      req.user.update({ premiumUser: status === "SUCCESS" ? true : false }),
-    ]);
+    const updates = await Promise.all(
+      [
+        payment.update({ status }),
+        req.user.update({ premiumUser: status === "SUCCESS" ? true : false }),
+      ],
+      { transaction }
+    );
     if (!updates) {
+      await transaction.rollback();
       throw new Error("Something went wrong while updating payment status");
     }
+    await transaction.commit();
     return res.status(201).json({ status: true, data: updates });
   } catch (error) {
+    await transaction.rollback();
     return res
       .status(500)
       .json({ status: false, data: null, message: error.message });

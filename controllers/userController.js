@@ -1,6 +1,7 @@
 const User = require("../models/userModel");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const sequelize = require("../configs/databaseConfig");
 
 const genereteToken = ({ id, fullName, email, phone }) => {
   return jwt.sign({ id, fullName, email, phone }, "UYGR$#%^&*UIHGHGCDXRSW", {
@@ -9,6 +10,7 @@ const genereteToken = ({ id, fullName, email, phone }) => {
 };
 
 const signup = async (req, res) => {
+  const transaction = await sequelize.transaction();
   try {
     const { fullName, email, mobile, password } = req.body;
     if (!fullName || !email || !mobile || !password) {
@@ -26,25 +28,31 @@ const signup = async (req, res) => {
     }
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
-    const user = await User.create({
-      fullName,
-      email,
-      mobile,
-      password: hashedPassword,
-      premiumUser: false,
-      totalExpenses: 0,
-    });
+    const user = await User.create(
+      {
+        fullName,
+        email,
+        mobile,
+        password: hashedPassword,
+        premiumUser: false,
+        totalExpenses: 0,
+      },
+      { transaction }
+    );
     if (!user) {
+      await transaction.rollback();
       throw new Error(
         "Some thing went wrong while signing up, please try again"
       );
     }
+    await transaction.commit();
     return res.status(201).json({
       status: true,
       data: user,
       message: "Signedup successfully, please signin to continue...",
     });
   } catch (error) {
+    await transaction.rollback();
     return res
       .status(500)
       .json({ status: false, data: null, message: error.message });

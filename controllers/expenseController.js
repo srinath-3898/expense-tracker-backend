@@ -1,3 +1,4 @@
+const sequelize = require("../configs/databaseConfig");
 const Expense = require("../models/expenseMode");
 
 const getAllExpenses = async (req, res) => {
@@ -25,6 +26,7 @@ const getAllExpenses = async (req, res) => {
 };
 
 const addExpense = async (req, res) => {
+  const transaction = await sequelize.transaction();
   try {
     const { amount, category, description } = req.body;
     if (!amount || !category || !description) {
@@ -34,30 +36,40 @@ const addExpense = async (req, res) => {
         message: "Missing required fields",
       });
     }
-    const updatedTotalExpenses = await req.user.update({
-      totalExpenses: req.user.totalExpenses + parseFloat(amount),
-    });
+    const updatedTotalExpenses = await req.user.update(
+      {
+        totalExpenses: req.user.totalExpenses + parseFloat(amount),
+      },
+      { transaction }
+    );
     if (!updatedTotalExpenses) {
+      await transaction.rollback();
       throw new Error("Something wrong while adding expense, please try again");
     }
-    const expense = await req.user.createExpense({
-      amount,
-      category,
-      description,
-    });
+    const expense = await req.user.createExpense(
+      {
+        amount,
+        category,
+        description,
+      },
+      { transaction }
+    );
     if (!expense) {
+      await transaction.rollback();
       return res.status(500).json({
         status: false,
         data: null,
         message: "Something went wring while adding expense, pleas try again",
       });
     }
+    await transaction.commit();
     return res.status(201).json({
       status: true,
       data: expense,
       message: "Successfully added expense",
     });
   } catch (error) {
+    transaction.rollback();
     return res.status(500).json({
       status: false,
       data: null,
@@ -67,6 +79,7 @@ const addExpense = async (req, res) => {
 };
 
 const editExpense = async (req, res) => {
+  const transaction = await sequelize.transaction();
   try {
     const id = req.params.expenseId;
     if (!id) {
@@ -85,8 +98,12 @@ const editExpense = async (req, res) => {
         message: "Missing required fields",
       });
     }
-    const expense = await Expense.findOne({ where: { id, userId: user.id } });
+    const expense = await Expense.findOne(
+      { where: { id, userId: user.id } },
+      { transaction }
+    );
     if (!expense) {
+      await transaction.rollback();
       return res.status(400).json({
         status: false,
         data: null,
@@ -98,6 +115,7 @@ const editExpense = async (req, res) => {
         req.user.totalExpenses - expense.amount + parseFloat(amount),
     });
     if (!updatedTotalExpenses) {
+      await transaction.rollback();
       throw new Error("Something wrong while adding expense, please try again");
     }
     const updatedExpense = await expense.update({
@@ -106,18 +124,21 @@ const editExpense = async (req, res) => {
       description,
     });
     if (!updatedExpense) {
+      await transaction.rollback();
       return res.status(400).json({
         status: false,
         data: null,
         message: "Something went wring while editing expense, pleas try again",
       });
     }
+    await transaction.commit();
     return res.status(201).json({
       status: true,
       data: updatedExpense,
       message: "Edited expense successfully",
     });
   } catch (error) {
+    await transaction.rollback();
     return res.status(500).json({
       status: false,
       data: null,
@@ -127,6 +148,7 @@ const editExpense = async (req, res) => {
 };
 
 const deleteExpense = async (req, res) => {
+  const transaction = await sequelize.transaction();
   try {
     const id = req.params.expenseId;
     if (!id) {
@@ -137,22 +159,31 @@ const deleteExpense = async (req, res) => {
       });
     }
     const user = req.user;
-    const expense = await Expense.findOne({ where: { id, userId: user.id } });
+    const expense = await Expense.findOne(
+      { where: { id, userId: user.id } },
+      { transaction }
+    );
     if (!expense) {
+      await transaction.rollback();
       return res.status(400).json({
         status: false,
         data: null,
         message: "Expense not found",
       });
     }
-    const updatedTotalExpenses = await req.user.update({
-      totalExpenses: req.user.totalExpenses - expense.amount,
-    });
+    const updatedTotalExpenses = await req.user.update(
+      {
+        totalExpenses: req.user.totalExpenses - expense.amount,
+      },
+      { transaction }
+    );
     if (!updatedTotalExpenses) {
+      await transaction.rollback();
       throw new Error("Something wrong while adding expense, please try again");
     }
-    const deletedExpense = await expense.destroy();
+    const deletedExpense = await expense.destroy({ transaction });
     if (!deletedExpense) {
+      await transaction.rollback();
       return res.status(500).json({
         status: false,
         data: null,
@@ -160,12 +191,14 @@ const deleteExpense = async (req, res) => {
           "Something went wrong while deleting expense, please try again",
       });
     }
+    await transaction.commit();
     return res.status(200).json({
       status: true,
       data: deletedExpense,
       message: "Expense deleted successfully",
     });
   } catch (error) {
+    await transaction.rollback();
     return res.status(500).json({
       status: false,
       data: null,
