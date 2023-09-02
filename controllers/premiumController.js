@@ -1,35 +1,27 @@
+const sequelize = require("../configs/databaseConfig");
 const Expense = require("../models/expenseMode");
 const User = require("../models/userModel");
 
 const leaderboard = async (req, res) => {
   try {
-    const users = await User.findAll();
-    if (!users) {
+    const leaderboard = await User.findAll({
+      attributes: [
+        "id",
+        "fullName",
+        [
+          sequelize.fn("SUM", sequelize.col("Expenses.amount")),
+          "totalExpenses",
+        ],
+      ],
+      include: [{ model: Expense, attributes: [] }],
+      group: ["User.id"],
+      order: [[sequelize.literal("totalExpenses"), "DESC"]],
+    });
+    if (!leaderboard) {
       throw new Error(
         "Something went wrong while fetching expenses, please try again"
       );
     }
-    const expenses = await Expense.findAll();
-    if (!expenses) {
-      throw new Error(
-        "Something went wrong while fetching expenses, please try again"
-      );
-    }
-    const totalExpenses = {};
-    for (const expense of expenses) {
-      const { userId, amount } = expense;
-      if (totalExpenses[userId]) {
-        totalExpenses[userId] += amount;
-      } else {
-        totalExpenses[userId] = amount;
-      }
-    }
-    const leaderboard = users.map((user) => ({
-      userId: user.id,
-      name: user.fullName,
-      totalExpenses: totalExpenses[user?.id],
-    }));
-    leaderboard.sort((a, b) => b.totalExpenses - a.totalExpenses);
     return res
       .status(200)
       .json({ status: true, data: leaderboard, message: "Leaderboard" });
