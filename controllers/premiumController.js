@@ -1,21 +1,11 @@
 const sequelize = require("../configs/databaseConfig");
-const Expense = require("../models/expenseMode");
 const User = require("../models/userModel");
 
 const leaderboard = async (req, res) => {
   try {
     const leaderboard = await User.findAll({
-      attributes: [
-        "id",
-        "fullName",
-        [
-          sequelize.fn("SUM", sequelize.col("Expenses.amount")),
-          "totalExpenses",
-        ],
-      ],
-      include: [{ model: Expense, attributes: [] }],
-      group: ["User.id"],
-      order: [[sequelize.literal("totalExpenses"), "DESC"]],
+      attributes: ["id", "fullName", "totalExpenses"],
+      order: [["totalExpenses", "DESC"]],
     });
     if (!leaderboard) {
       throw new Error(

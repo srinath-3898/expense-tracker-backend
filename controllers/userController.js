@@ -32,6 +32,7 @@ const signup = async (req, res) => {
       mobile,
       password: hashedPassword,
       premiumUser: false,
+      totalExpenses: 0,
     });
     if (!user) {
       throw new Error(

@@ -26,7 +26,6 @@ const getAllExpenses = async (req, res) => {
 
 const addExpense = async (req, res) => {
   try {
-    const user = req.user;
     const { amount, category, description } = req.body;
     if (!amount || !category || !description) {
       return res.status(400).json({
@@ -35,7 +34,17 @@ const addExpense = async (req, res) => {
         message: "Missing required fields",
       });
     }
-    const expense = await user.createExpense({ amount, category, description });
+    const updatedTotalExpenses = await req.user.update({
+      totalExpenses: req.user.totalExpenses + parseFloat(amount),
+    });
+    if (!updatedTotalExpenses) {
+      throw new Error("Something wrong while adding expense, please try again");
+    }
+    const expense = await req.user.createExpense({
+      amount,
+      category,
+      description,
+    });
     if (!expense) {
       return res.status(500).json({
         status: false,
@@ -84,6 +93,13 @@ const editExpense = async (req, res) => {
         message: "Expense not found",
       });
     }
+    const updatedTotalExpenses = await req.user.update({
+      totalExpenses:
+        req.user.totalExpenses - expense.amount + parseFloat(amount),
+    });
+    if (!updatedTotalExpenses) {
+      throw new Error("Something wrong while adding expense, please try again");
+    }
     const updatedExpense = await expense.update({
       amount,
       category,
@@ -128,6 +144,12 @@ const deleteExpense = async (req, res) => {
         data: null,
         message: "Expense not found",
       });
+    }
+    const updatedTotalExpenses = await req.user.update({
+      totalExpenses: req.user.totalExpenses - expense.amount,
+    });
+    if (!updatedTotalExpenses) {
+      throw new Error("Something wrong while adding expense, please try again");
     }
     const deletedExpense = await expense.destroy();
     if (!deletedExpense) {

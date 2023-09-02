@@ -10,6 +10,7 @@ User.init(
     mobile: { type: Sequelize.DataTypes.STRING(255), allowNull: false },
     password: { type: Sequelize.DataTypes.STRING(255), allowNull: false },
     premiumUser: { type: Sequelize.DataTypes.BOOLEAN, allowNull: false },
+    totalExpenses: { type: Sequelize.DataTypes.DOUBLE, allowNull: false },
   },
   { sequelize, modelName: "user" }
 );
