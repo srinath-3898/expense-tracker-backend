@@ -2,6 +2,7 @@ const User = require("../models/userModel");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const sequelize = require("../configs/databaseConfig");
+const SibApiV3Sdk = require("sib-api-v3-sdk");
 
 const genereteToken = ({ id, fullName, email, phone }) => {
   return jwt.sign({ id, fullName, email, phone }, "UYGR$#%^&*UIHGHGCDXRSW", {
@@ -106,4 +107,51 @@ const profile = async (req, res) => {
   }
 };
 
-module.exports = { signup, signin, profile };
+const forgotPassword = async (req, res) => {
+  try {
+    const { forgotPasswordEmail } = req.body;
+    if (!forgotPasswordEmail) {
+      return res.status(400).json({
+        status: false,
+        data: null,
+        message: "Missing email",
+      });
+    }
+    const user = await User.findOne({ where: { email: forgotPasswordEmail } });
+    if (!user) {
+      return res.status(400).json({
+        status: false,
+        data: null,
+        message: "Please enter registered email id",
+      });
+    }
+    const defaultClient = SibApiV3Sdk.ApiClient.instance;
+    const apiKey = defaultClient.authentications["api-key"];
+    apiKey.apiKey =
+      "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";
+    const tranEmailApi = new SibApiV3Sdk.TransactionalEmailsApi();
+    const sender = {
+      email: "munnuru.srinath3898@gmail.com",
+      name: "Munnuru Srinath",
+    };
+    const recievers = [{ email: forgotPasswordEmail }];
+    await tranEmailApi.sendTransacEmail({
+      sender,
+      to: recievers,
+      subject: "Reset Password",
+      htmlContent: `<p>Hello ${forgotPasswordEmail}</p>`,
+    });
+    return res.status(201).json({
+      status: true,
+      data: null,
+      message:
+        "An email has been sent to your registered mail id with the reset password link",
+    });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ status: false, data: null, message: error.message });
+  }
+};
+
+module.exports = { signup, signin, profile, forgotPassword };
