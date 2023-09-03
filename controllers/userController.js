@@ -3,6 +3,8 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const sequelize = require("../configs/databaseConfig");
 const SibApiV3Sdk = require("sib-api-v3-sdk");
+const { v4: uuidv4 } = require("uuid");
+const ForgotPasswordRequest = require("../models/forgotPasswordRequestModel");
 
 const genereteToken = ({ id, fullName, email, phone }) => {
   return jwt.sign({ id, fullName, email, phone }, "UYGR$#%^&*UIHGHGCDXRSW", {
@@ -108,6 +110,7 @@ const profile = async (req, res) => {
 };
 
 const forgotPassword = async (req, res) => {
+  const transaction = await sequelize.transaction();
   try {
     const { forgotPasswordEmail } = req.body;
     if (!forgotPasswordEmail) {
@@ -125,24 +128,45 @@ const forgotPassword = async (req, res) => {
         message: "Please enter registered email id",
       });
     }
+    const requestId = uuidv4();
+    const forgotPasswordRequest = await user.createForgotPasswordRequest(
+      {
+        id: requestId,
+      },
+      { transaction }
+    );
+    if (!forgotPasswordRequest) {
+      await transaction.rollback();
+      throw new Error(
+        "Something went wrong while sending email, please try again"
+      );
+    }
     const defaultClient = SibApiV3Sdk.ApiClient.instance;
     const apiKey = defaultClient.authentications["api-key"];
     apiKey.apiKey =
-      "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";
+      "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";
     const tranEmailApi = new SibApiV3Sdk.TransactionalEmailsApi();
     const sender = {
       email: "munnuru.srinath3898@gmail.com",
       name: "Munnuru Srinath",
     };
     const recievers = [{ email: forgotPasswordEmail }];
-    await tranEmailApi.sendTransacEmail({
+    const resetUrl = `http://localhost:3000/resetpassword/?requestId=${requestId}`;
+    const emailSent = await tranEmailApi.sendTransacEmail({
       sender,
       to: recievers,
       subject: "Reset Password",
-      htmlContent: `<p>Hello ${forgotPasswordEmail}</p>`,
+      htmlContent: `<p>Hello ${user.fullName},</p><p>Click <a href="${resetUrl}">here</a> to reset your password.</p>`,
     });
+    if (!emailSent) {
+      await transaction.rollback();
+      throw new Error(
+        "Something went wrong while sending email, please try again"
+      );
+    }
+    await transaction.commit();
     return res.status(201).json({
-      status: true,
+      status: false,
       data: null,
       message:
         "An email has been sent to your registered mail id with the reset password link",
@@ -154,4 +178,79 @@ const forgotPassword = async (req, res) => {
   }
 };
 
-module.exports = { signup, signin, profile, forgotPassword };
+const resetpassword = async (req, res) => {
+  const transaction = await sequelize.transaction();
+  try {
+    const { requestId } = req.params;
+    const forgotPasswordRequest = await ForgotPasswordRequest.findOne({
+      where: { id: requestId, isactive: true },
+    });
+    if (!forgotPasswordRequest) {
+      return res.status(400).json({
+        status: false,
+        data: null,
+        message: "Invalid or expired reset link",
+      });
+    }
+    const { newPassword, confirmPassword } = req.body;
+    if (!newPassword || !confirmPassword) {
+      return res.status(400).json({
+        status: false,
+        data: null,
+        message: "Missing required fields",
+      });
+    }
+    if (newPassword !== confirmPassword) {
+      return res
+        .status(400)
+        .json({ status: false, data: null, message: "Passwords do not match" });
+    }
+    const user = await User.findByPk(forgotPasswordRequest.userId);
+    if (!user) {
+      return res
+        .status(404)
+        .json({ status: false, data: null, message: "User not found" });
+    }
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+    const updatedUser = await user.update(
+      { password: hashedPassword },
+      { transaction }
+    );
+    if (!updatedUser) {
+      await transaction.rollback();
+      return res.status(404).json({
+        status: false,
+        data: null,
+        message: "Something went wrong please try again",
+      });
+    }
+    const updatedForgotPasswordRequest = await forgotPasswordRequest.update(
+      {
+        isactive: false,
+      },
+      { transaction }
+    );
+    if (!updatedForgotPasswordRequest) {
+      await transaction.rollback();
+      return res.status(404).json({
+        status: false,
+        data: null,
+        message:
+          "Something went wrong while resetting password, please try again...",
+      });
+    }
+    await transaction.commit();
+    return res.status(200).json({
+      status: true,
+      data: null,
+      message: "Successfully changed your password",
+    });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ status: false, data: null, message: error.message });
+  }
+};
+
+module.exports = { signup, signin, profile, forgotPassword, resetpassword };

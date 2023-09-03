@@ -1,5 +1,5 @@
 const sequelize = require("../configs/databaseConfig");
-const Expense = require("../models/expenseMode");
+const Expense = require("../models/expenseModel");
 
 const getAllExpenses = async (req, res) => {
   try {

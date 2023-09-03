@@ -4,6 +4,7 @@ const {
   signin,
   profile,
   forgotPassword,
+  resetpassword,
 } = require("../controllers/userController");
 const { protect } = require("../middlewares/authMiddleware");
 
@@ -13,5 +14,6 @@ router.post("/signup", signup);
 router.post("/signin", signin);
 router.get("/profile", protect, profile);
 router.post("/forgot-password", forgotPassword);
+router.post("/reset-password/:requestId", resetpassword);
 
 module.exports = router;
