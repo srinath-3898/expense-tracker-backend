@@ -5,6 +5,7 @@ const sequelize = require("../configs/databaseConfig");
 const SibApiV3Sdk = require("sib-api-v3-sdk");
 const { v4: uuidv4 } = require("uuid");
 const ForgotPasswordRequest = require("../models/forgotPasswordRequestModel");
+require("dotenv").config();
 
 const genereteToken = ({ id, fullName, email, phone }) => {
   return jwt.sign({ id, fullName, email, phone }, "UYGR$#%^&*UIHGHGCDXRSW", {
@@ -143,8 +144,7 @@ const forgotPassword = async (req, res) => {
     }
     const defaultClient = SibApiV3Sdk.ApiClient.instance;
     const apiKey = defaultClient.authentications["api-key"];
-    apiKey.apiKey =
-      "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";
+    apiKey.apiKey = process.env.BREVO_API_KEY;
     const tranEmailApi = new SibApiV3Sdk.TransactionalEmailsApi();
     const sender = {
       email: "munnuru.srinath3898@gmail.com",

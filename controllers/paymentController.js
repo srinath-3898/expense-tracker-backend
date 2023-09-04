@@ -1,6 +1,7 @@
 const Payment = require("../models/paymentModel");
 const Razorpay = require("razorpay");
 const sequelize = require("../configs/databaseConfig");
+require("dotenv").config();
 
 const createOrder = async (req, res) => {
   const transaction = await sequelize.transaction();
@@ -13,8 +14,8 @@ const createOrder = async (req, res) => {
         .json({ status: false, data: null, message: "Order already created" });
     }
     const instance = new Razorpay({
-      key_id: "rzp_test_HOTPHJrQjTkXoL",
-      key_secret: "N6XLAdiAgOCkbaZsKkdq3cGr",
+      key_id: process.env.RAZORPAY_KEY_ID,
+      key_secret: process.env.RAZORPAY_KEY_SECRET,
     });
     instance.orders.create(
       { amount: 10000, currency: "INR" },

@@ -6,12 +6,25 @@ const Expense = require("./models/expenseModel");
 const Payment = require("./models/paymentModel");
 const ForgotPasswordRequest = require("./models/forgotPasswordRequestModel");
 const Download = require("./models/downloadModel");
+require("dotenv").config();
+const helmet = require("helmet");
+const morgan = require("morgan");
+const fs = require("fs");
+const path = require("path");
 
 const app = express();
+
+const port = process.env.PORT;
+const accessLogStream = fs.createWriteStream(
+  path.join(__dirname, "acces.log"),
+  { flags: "a" }
+);
 
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+app.use(helmet());
+app.use(morgan("combined", { stream: accessLogStream }));
 
 app.use("/user", require("./routes/userRoutes"));
 app.use("/expense", require("./routes/expenseRoutes"));
@@ -31,7 +44,7 @@ sequelize
   .sync()
   .then(() => {
     console.log("Database connected");
-    return app.listen(8080);
+    return app.listen(port);
   })
-  .then(() => console.log("Server running on port 8080"))
+  .then(() => console.log(`Server running on port ${port}`))
   .catch((err) => console.log(err));
