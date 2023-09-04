@@ -1,11 +1,16 @@
 const sequelize = require("../configs/databaseConfig");
 const Expense = require("../models/expenseModel");
-const { getExpenses } = require("../services/userServices");
 
 const getAllExpenses = async (req, res) => {
   try {
-    const user = req.user;
-    const expenses = await getExpenses(req);
+    const pageSize = parseInt(req.query.pageSize) || 5;
+    const currentPage = parseInt(req.query.page) || 1;
+    const totalRecords = await req.user.countExpenses();
+    const totalPages = Math.ceil(totalRecords / pageSize);
+    const expenses = await req.user.getExpenses({
+      offset: (currentPage - 1) * pageSize,
+      limit: pageSize,
+    });
     if (!expenses) {
       return res.status(500).json({
         status: false,
@@ -14,9 +19,17 @@ const getAllExpenses = async (req, res) => {
           "Something went wring while fetching expenses, pleas try again",
       });
     }
-    return res
-      .status(200)
-      .json({ status: true, data: expenses, message: "List of all expenses" });
+
+    return res.status(200).json({
+      status: true,
+      data: {
+        currentPage,
+        lastPage: totalPages,
+        data: expenses,
+        totalRecords,
+      },
+      message: "List of all expenses",
+    });
   } catch (error) {
     return res.status(500).json({
       status: false,
