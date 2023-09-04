@@ -1,10 +1,11 @@
 const sequelize = require("../configs/databaseConfig");
 const Expense = require("../models/expenseModel");
+const { getExpenses } = require("../services/userServices");
 
 const getAllExpenses = async (req, res) => {
   try {
     const user = req.user;
-    const expenses = await user.getExpenses();
+    const expenses = await getExpenses(req);
     if (!expenses) {
       return res.status(500).json({
         status: false,

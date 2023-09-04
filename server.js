@@ -5,6 +5,7 @@ const User = require("./models/userModel");
 const Expense = require("./models/expenseModel");
 const Payment = require("./models/paymentModel");
 const ForgotPasswordRequest = require("./models/forgotPasswordRequestModel");
+const Download = require("./models/downloadModel");
 
 const app = express();
 
@@ -23,6 +24,8 @@ User.hasMany(Payment);
 Payment.belongsTo(User);
 User.hasMany(ForgotPasswordRequest);
 ForgotPasswordRequest.belongsTo(User);
+User.hasMany(Download);
+Download.belongsTo(User);
 
 sequelize
   .sync()
