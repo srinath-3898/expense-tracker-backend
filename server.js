@@ -16,7 +16,7 @@ const app = express();
 
 const port = process.env.PORT;
 const accessLogStream = fs.createWriteStream(
-  path.join(__dirname, "acces.log"),
+  path.join(__dirname, "access.log"),
   { flags: "a" }
 );
 
