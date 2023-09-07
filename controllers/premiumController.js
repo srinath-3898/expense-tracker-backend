@@ -44,9 +44,7 @@ const download = async (req, res) => {
       });
     }
     const stringifiedExpenses = JSON.stringify(expenses);
-    const fileName = `expense_tracker_node/Expenses${
-      req.user.id
-    }/${new Date()}.txt`;
+    const fileName = `Expenses${req.user.id}/${new Date()}.txt`;
     const s3Response = await uploadToS3(stringifiedExpenses, fileName);
     if (!s3Response) {
       throw new Error("Error uploading file to S3");
