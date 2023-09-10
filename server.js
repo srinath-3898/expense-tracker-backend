@@ -13,7 +13,13 @@ const app = express();
 
 const port = process.env.PORT;
 
-app.use(cors());
+app.use(
+  cors({
+    origin: "https://main.d2t32z4rl8vpay.amplifyapp.com",
+    methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+    credentials: true,
+  })
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(helmet());
